@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BluTrack — Blu-ray Disc Health & E-Waste Simulator</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="hero-bg">
+    <div class="grid-overlay"></div>
+    <div class="glow-pulse pulse-1"></div>
+    <div class="glow-pulse pulse-2"></div>
+    <div class="disc-hero"></div>
+    <div id="particleContainer"></div>
+  </div>
+  <div class="container">
+    <!-- HEADER -->
+    <div class="header">
+      <!-- Floating accent glowing dots -->
+      <div class="header-accent a1"></div>
+      <div class="header-accent a2"></div>
+      <div class="header-accent a3"></div>
+      <div class="header-accent a4"></div>
+
+      <!-- Status badge -->
+      <div style="margin-bottom: 16px;">
+        <span class="header-badge">AI-Powered Simulation</span>
+      </div>
+
+      <h1><span class="blu">BLU</span><span class="track">TRACK</span></h1>
+
+      <!-- Divider lines with label -->
+      <div class="header-divider">
+        <div class="header-divider-line"></div>
+        <span
+          style="font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Optical
+          Storage Analytics</span>
+        <div class="header-divider-line right"></div>
+      </div>
+    </div>
+
+    <!-- IMAGE ANALYSIS -->
+    <div class="analysis-section">
+      <div class="analysis-header"><span> AI DISC SURFACE ANALYSIS</span></div>
+      <div class="analysis-layout">
+        <div class="upload-area" id="uploadArea">
+          <!-- Re-upload Overlay -->
+          <div class="re-upload-overlay">
+            <span>RE-UPLOAD IMAGE</span>
+          </div>
+          <input type="file" id="imageInput" accept="image/*" style="display:none;">
+          <div class="upload-prompt" id="uploadPrompt">
+            <div class="upload-icon-box">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+                <path d="M12 12v9"></path>
+                <path d="m16 16-4-4-4 4"></path>
+              </svg>
+            </div>
+            <div class="upload-main-text" id="uploadText">Click to upload</div>
+            <div class="upload-sub-text">PNG · JPG · SVG</div>
+          </div>
+          <video id="cameraFeed" style="display:none;" autoplay playsinline></video>
+          <canvas id="discCanvas" style="display:none;"></canvas>
+          <canvas id="overlayCanvas" style="display:none;"></canvas>
+          <div class="upload-error-overlay" id="uploadError" aria-live="polite">
+            <div class="upload-error-card">
+              <div class="upload-error-title">Geometry Error</div>
+              <div class="upload-error-text" id="uploadErrorText">Upload a full circular disc image to continue.</div>
+            </div>
+          </div>
+          <div class="scan-line" id="scanLine" style="display:none;"></div>
+          <div class="camera-btns">
+            <button class="cam-btn" id="startCamBtn">USE CAMERA</button>
+            <button class="cam-btn" id="retakeBtn" style="display:none;">RETAKE</button>
+            <button class="cam-btn capture-btn" id="captureBtn" style="display:none;">CAPTURE FRAME</button>
+            <button class="cam-btn" id="stopCamBtn" style="display:none;">CANCEL</button>
+          </div>
+        </div>
+        <div class="analysis-results">
+          <button class="primary-btn" id="runAnalysisBtn" onclick="runAnalysis()"
+            style="display:none; width:100%; margin-bottom:15px; letter-spacing:2px;">RUN STRUCTURAL ANALYSIS</button>
+          <div class="log-box" id="analysisLog">
+            <div style="color:var(--text-muted)">> Waiting for image input...</div>
+          </div>
+
+          <!-- Score breakdown bars — shown after scan -->
+          <div class="score-breakdown" id="scoreBreakdown" style="display:none;">
+            <div class="score-row">
+              <span class="score-label">Saturation loss</span>
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" id="bar_sat" style="background:#ef4444;width:0%"></div>
+              </div>
+              <span class="score-pct" id="pct_sat">0%</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Grey patch %</span>
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" id="bar_grey" style="background:#f59e0b;width:0%"></div>
+              </div>
+              <span class="score-pct" id="pct_grey">0%</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Edge magnitude score</span>
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" id="bar_edge" style="background:#8b5cf6;width:0%"></div>
+              </div>
+              <span class="score-pct" id="pct_edge">0%</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Zone consistency</span>
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" id="bar_zone" style="background:#06d6f5;width:0%"></div>
+              </div>
+              <span class="score-pct" id="pct_zone">0%</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Analytical health score</span>
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" id="bar_health" style="background:#10b981;width:0%"></div>
+              </div>
+              <span class="score-pct" id="pct_health">0%</span>
+            </div>
+          </div>
+
+          <button id="scanBtn" class="primary-btn" disabled>RUN STRUCTURAL ANALYSIS</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="simulationContent" style="display:none; opacity:0; transition:opacity 0.8s ease;">
+
+      <!-- CONTROLS -->
+      <div class="controls">
+        <div class="ctrl">
+          <span class="ctrl-label">DISC AGE</span>
+          <div class="ctrl-value" id="ageOut">5 yr</div>
+          <input type="range" id="ageSlider" min="0" max="50" value="5" step="1" oninput="update()">
+        </div>
+        <div class="ctrl">
+          <span class="ctrl-label">USAGE FREQUENCY</span>
+          <div class="ctrl-value" id="freqOut">10×/mo</div>
+          <input type="range" id="freqSlider" min="1" max="60" value="10" step="1" oninput="update()">
+        </div>
+        <div class="ctrl">
+          <span class="ctrl-label">STORAGE CONDITIONS</span>
+          <select id="storageSelect" onchange="update()">
+            <option value="0.012">Ideal — dark, cool, vertical</option>
+            <option value="0.040" selected>Average — shelf, room temp</option>
+            <option value="0.100">Poor — humid, direct light</option>
+            <option value="0.250">Harsh — car, outdoor exposure</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- METRICS -->
+      <div class="metrics">
+        <div class="metric m-health" onclick="openHealthDiagnostic()" style="cursor:pointer">
+          <div class="metric-value" id="mHealth" style="color:var(--green)">97%</div>
+          <div class="metric-label">DISC HEALTH</div>
+          <div class="metric-reason"
+            style="opacity:1; background:transparent; pointer-events:none; font-size:8px; bottom:10px; inset:auto; width:100%;">
+            <div style="opacity:0.6; text-transform:uppercase; letter-spacing:1px;">Click for Diagnostic Report</div>
+          </div>
+        </div>
+        <div class="metric" onclick="openLifeInsight()" style="cursor:pointer">
+          <div class="metric-value" id="mLife" style="color:var(--cyan)">45 yr</div>
+          <div class="metric-label">REMAINING LIFE</div>
+          <div class="metric-reason"
+            style="opacity:1; background:transparent; pointer-events:none; font-size:8px; bottom:10px; inset:auto; width:100%;">
+            <div style="opacity:0.6; text-transform:uppercase; letter-spacing:1px;">Click for Archival Insight</div>
+          </div>
+        </div>
+        <div class="metric" onclick="openSavingsInsight()" style="cursor:pointer">
+          <div class="metric-value" id="mDiscs" style="color:var(--gold)">142</div>
+          <div class="metric-label">DISCS SAVED vs CD</div>
+          <div class="metric-reason"
+            style="opacity:1; background:transparent; pointer-events:none; font-size:8px; bottom:10px; inset:auto; width:100%;">
+            <div style="opacity:0.6; text-transform:uppercase; letter-spacing:1px;">Click for Density Intel</div>
+          </div>
+        </div>
+        <div class="metric" onclick="openEcoAudit()" style="cursor:pointer">
+          <div class="metric-value" id="mCO2" style="color:var(--violet)">2.1 kg</div>
+          <div class="metric-label">CO₂ AVOIDED</div>
+          <div class="metric-reason"
+            style="opacity:1; background:transparent; pointer-events:none; font-size:8px; bottom:10px; inset:auto; width:100%;">
+            <div style="opacity:0.6; text-transform:uppercase; letter-spacing:1px;">Click for Eco Impact</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISC VISUAL -->
+      <div class="disc-row">
+        <div class="disc-container">
+          <div class="disc-svg-wrap" onclick="this.classList.toggle('touched')">
+            <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="discBg" cx="50%" cy="50%">
+                  <stop offset="0%" stop-color="#12182e" />
+                  <stop offset="100%" stop-color="#05080f" />
+                </radialGradient>
+              </defs>
+              <circle cx="80" cy="80" r="75" fill="url(#discBg)" stroke="rgba(79,143,255,0.2)" stroke-width="1" />
+              <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(255,77,109,0.18)" stroke-width="6" />
+              <circle cx="80" cy="80" r="60" fill="none" stroke="rgba(255,209,102,0.18)" stroke-width="5" />
+              <circle cx="80" cy="80" r="53" fill="none" stroke="rgba(0,229,160,0.18)" stroke-width="5" />
+              <circle cx="80" cy="80" r="46" fill="none" stroke="rgba(79,143,255,0.2)" stroke-width="4" />
+              <circle cx="80" cy="80" r="39" fill="none" stroke="rgba(139,92,246,0.2)" stroke-width="4" />
+              <circle cx="80" cy="80" r="32" fill="none" stroke="rgba(6,214,245,0.2)" stroke-width="3" />
+              <circle id="healthArc" cx="80" cy="80" r="72" fill="none" stroke="#00e5a0" stroke-width="3"
+                stroke-linecap="round" stroke-dasharray="452.4" stroke-dashoffset="0" transform="rotate(-90 80 80)"
+                style="transition:stroke-dashoffset 0.6s ease,stroke 0.4s ease;" />
+
+              <g id="discCracks" opacity="0" style="transition: opacity 0.8s ease;">
+                <path d="M40 40 L60 60 L50 80" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" fill="none" />
+                <path d="M120 40 L100 70 L110 90" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" fill="none" />
+                <path d="M60 120 L80 100 L90 130" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" fill="none" />
+                <path d="M30 80 L50 90 L40 110" stroke="rgba(255,255,230,0.3)" stroke-width="0.5" fill="none" />
+              </g>
+
+              <circle cx="80" cy="80" r="10" fill="#03080f" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+              <circle cx="80" cy="22" r="3.5" fill="#4f8fff" opacity="0.9">
+                <animateTransform attributeName="transform" type="rotate" from="0 80 80" to="360 80 80" dur="3s"
+                  repeatCount="indefinite" />
+              </circle>
+              <text id="discSubstrate" x="80" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                font-size="5" fill="#fff" opacity="0"
+                style="transition: opacity 0.4s ease; text-transform:uppercase; letter-spacing:0.5px;">SUBSTRATE:
+                POLYCARBONATE</text>
+              <text id="discStatus" x="80" y="66" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                font-size="7" font-weight="700" fill="#fff" opacity="0.8"
+                style="text-transform:uppercase; letter-spacing:1px;">OPTIMAL</text>
+              <text id="discPct" x="80" y="87" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                font-size="17" font-weight="500" fill="#00e5a0">97%</text>
+              <text id="discReason" x="80" y="100" text-anchor="middle" font-family="Manrope, sans-serif" font-size="6"
+                fill="#fff" opacity="0.5">Atomic-Level Precision</text>
+              <text id="discJitter" x="80" y="112" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                font-size="5" fill="#fff" opacity="0"
+                style="transition: opacity 0.4s ease; text-transform:uppercase; letter-spacing:0.5px;">JITTER:
+                -0.8dB</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATUS BAR -->
+      <div class="status-bar status-good" id="statusBar">
+        <div class="status-dot"></div>
+        <span id="statusText">Disc is in excellent condition.</span>
+      </div>
+
+      <!-- DIRECT COMPARISON MODULE -->
+      <div class="compare-section" id="compareSection">
+        <div class="compare-header">
+          <div class="compare-title">DISC COMPARISON &amp; BENCHMARKING</div>
+          <span class="compare-mode-badge" id="compareModeIndicator">SIMULATION MODE</span>
+        </div>
+
+        <!-- Column Headers -->
+        <div class="comp-table-head">
+          <div class="comp-th metric-col">METRIC</div>
+          <div class="comp-th">PERFECT DISC</div>
+          <div class="comp-th">YOUR DISC</div>
+        </div>
+
+        <!-- Row 1: Overall Health -->
+        <div class="comp-row" data-metric="health" role="button" tabindex="0" aria-label="Open overall health details">
+          <div class="comp-row-label">⬤ Overall Health</div>
+          <div class="comp-row-cell ref-cell">
+            <div class="comp-row-val cyan">100.0%</div>
+            <div class="comp-bar-bg"><div class="compare-bar-fill green" style="width:100%"></div></div>
+            <div class="comp-row-tag">Perfect Condition</div>
+          </div>
+          <div class="comp-row-cell">
+            <div class="comp-row-val" id="compHealthVal">—</div>
+            <div class="comp-bar-bg"><div class="compare-bar-fill" id="compHealthBar" style="width:0%"></div></div>
+            <div class="comp-row-tag" id="compHealthTag">—</div>
+          </div>
+        </div>
+
+        <!-- Row 2: Scratch Damage -->
+        <div class="comp-row" data-metric="scratch" role="button" tabindex="0" aria-label="Open scratch damage details">
+          <div class="comp-row-label">⬤ Scratch Damage</div>
+          <div class="comp-row-cell ref-cell">
+            <div class="comp-row-val cyan">0.0%</div>
+            <div class="comp-bar-bg"><div class="compare-bar-fill" style="width:0%"></div></div>
+            <div class="comp-row-tag">No Scratches</div>
+          </div>
+          <div class="comp-row-cell">
+            <div class="comp-row-val" id="compScratchVal">—</div>
+            <div class="comp-bar-bg"><div class="compare-bar-fill" id="compScratchBar" style="width:0%"></div></div>
+            <div class="comp-row-tag" id="compScratchTag">—</div>
+          </div>
+        </div>
+
+        <!-- Row 3: Oxidation / Saturation Loss -->
+        <div class="comp-row" data-metric="oxidation" role="button" tabindex="0" aria-label="Open oxidation details">
+          <div class="comp-row-label">⬤ Oxidation / Sat Loss</div>
+          <div class="comp-row-cell ref-cell">
+            <div class="comp-row-val cyan">0.0%</div>
+            <div class="comp-bar-bg"><div class="compare-bar-fill" style="width:0%"></div></div>
+            <div class="comp-row-tag">No Oxidation</div>
+          </div>
+          <div class="comp-row-cell">
+            <div class="comp-row-val" id="compOxidationVal">—</div>
+            <div class="comp-bar-bg"><div class="compare-bar-fill" id="compOxidationBar" style="width:0%"></div></div>
+            <div class="comp-row-tag" id="compOxidationTag">—</div>
+          </div>
+        </div>
+
+        <!-- Row 4: Surface Dullness -->
+        <div class="comp-row" data-metric="dullness" role="button" tabindex="0" aria-label="Open surface dullness details">
+          <div class="comp-row-label">⬤ Surface Dullness</div>
+          <div class="comp-row-cell ref-cell">
+            <div class="comp-row-val cyan">0.0%</div>
+            <div class="comp-bar-bg"><div class="compare-bar-fill" style="width:0%"></div></div>
+            <div class="comp-row-tag">No Degradation</div>
+          </div>
+          <div class="comp-row-cell">
+            <div class="comp-row-val" id="compDullVal">—</div>
+            <div class="comp-bar-bg"><div class="compare-bar-fill" id="compDullBar" style="width:0%"></div></div>
+            <div class="comp-row-tag" id="compDullTag">—</div>
+          </div>
+        </div>
+
+        <div class="compare-insight" id="compareInsightText">
+          Run simulation or scan a disc to see results.
+        </div>
+      </div>
+
+
+      <!-- CHART -->
+
+      <div class="chart-section">
+        <div class="chart-header">
+          <div class="chart-header-title"> DISC HEALTH DEGRADATION OVER TIME</div>
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-line" style="background:var(--cyan)"></div>Blu-ray
+            </div>
+            <div class="legend-item">
+              <div class="legend-line" style="background:var(--gold)"></div>DVD
+            </div>
+            <div class="legend-item">
+              <div class="legend-line" style="background:var(--text-muted)"></div>CD
+            </div>
+          </div>
+        </div>
+        <div class="chart-body">
+          <div class="chart-canvas-wrap"><canvas id="mainChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- EQUATIONS -->
+      <div class="equations" id="simEq">
+        <div class="eq" onclick="this.classList.toggle('expanded')">
+          <div class="eq-hint">Click to expand</div>
+          <div class="eq-name">DEGRADATION MODEL</div>
+          <div class="eq-formula">H = H₀ · e⁻<sup>αt</sup> · e⁻<sup>β(As/A)</sup> · e⁻<sup>γ(ds/dmin)²</sup> ·
+            e⁻<sup>δE</sup></div>
+          <div class="eq-note">&alpha; = storage decay constant</div>
+          <div class="eq-value" id="valDeg"></div>
+          <div class="eq-process" id="procDeg"></div>
+        </div>
+        <div class="eq" onclick="this.classList.toggle('expanded')">
+          <div class="eq-hint">Click to expand</div>
+          <div class="eq-name">MINIMUM PIT SIZE</div>
+          <div class="eq-formula">d_min = &lambda; / (2&middot;NA)</div>
+          <div class="eq-note">NA = numerical aperture</div>
+          <div class="eq-value" id="valPit"></div>
+          <div class="eq-process" id="procPit"></div>
+        </div>
+        <div class="eq" onclick="this.classList.toggle('expanded')">
+          <div class="eq-hint">Click to expand</div>
+          <div class="eq-name">STORAGE CAPACITY</div>
+          <div class="eq-formula">C &prop; 1 / &lambda;&sup2;</div>
+          <div class="eq-note">Shorter &lambda; &rarr; more data</div>
+          <div class="eq-value" id="valCap"></div>
+          <div class="eq-process" id="procCap"></div>
+        </div>
+        <div class="eq" onclick="this.classList.toggle('expanded')">
+          <div class="eq-hint">Click to expand</div>
+          <div class="eq-name">E-WASTE REDUCTION</div>
+          <div class="eq-formula">W = (C_BD/C_CD) &times; N &times; m</div>
+          <div class="eq-note">N = discs, m = mass/disc</div>
+          <div class="eq-value" id="valWaste"></div>
+          <div class="eq-process" id="procWaste"></div>
+        </div>
+      </div>
+
+      <!-- BLU-RAY CROSS SECTION -->
+      <div class="disc-cross-section">
+        <div class="cs-header">
+          <div class="cs-title">Blu-ray Structural Cross-Section</div>
+          <div class="cs-subtitle">Precision Engineering of Optical Multi-Layers</div>
+          <div
+            style="font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-top:5px; opacity:0.6;">
+            (Click layers for technical specs)</div>
+        </div>
+        <div class="cs-container">
+          <div class="l-laser"></div>
+
+          <div class="cs-layer l-hard" onclick="openLayerInsight('hard')">
+            Hard Coat
+            <div class="cs-label">Anti-Scratch Shield</div>
+          </div>
+
+          <div class="cs-layer l-cover" onclick="openLayerInsight('cover')">
+            Cover Layer
+            <div class="cs-label"><strong>0.1mm</strong> Precision Layer</div>
+          </div>
+
+          <div class="cs-layer l-record" onclick="openLayerInsight('record')">
+            Recording Layer
+            <div class="cs-label">Phase-Change Material</div>
+          </div>
+
+          <div class="cs-layer l-reflect" onclick="openLayerInsight('reflect')">
+            Reflective Layer
+            <div class="cs-layer-text">Silver/Alloy</div>
+            <div class="cs-label">Beam Return</div>
+          </div>
+
+          <div class="cs-layer l-data" onclick="openLayerInsight('data')">
+            Data Layer (L0)
+            <div class="cs-label">Pits & Lands</div>
+          </div>
+
+          <div class="cs-layer l-substr" onclick="openLayerInsight('substrate')">
+            Polycarbonate Substrate
+            <div class="cs-label"><strong>1.1mm</strong> Structural Base</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LAYER TECHNICAL BREAKDOWN -->
+      <div class="layer-guide-section" style="margin-top:40px;">
+        <div class="section-header-box" style="margin-bottom:15px; text-align:center;">
+          <div class="disc-info-title">PHASE-BY-PHASE STRUCTURAL BREAKDOWN</div>
+          <div
+            style="font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-top:5px; opacity:0.6;">
+            Inorganic Substrate Engineering Guide</div>
+        </div>
+        <div class="layer-specs-container">
+          <!-- Hard Coat -->
+          <div class="spec-card" id="spec_hard" style="--accent-color: rgba(255,255,255,0.4)">
+            <div class="spec-num">LAYER 06</div>
+            <div class="spec-name">Hard Coat (Durabis)</div>
+            <div class="spec-desc">A 50μm shielding layer designed to isolate the sensitive optical surface from
+              mechanical abrasion, chemicals, and finger oils.</div>
+            <div class="spec-metric">Impact: 50x Scratch Resistance</div>
+          </div>
+          <!-- Cover -->
+          <div class="spec-card" id="spec_cover" style="--accent-color: var(--cyan)">
+            <div class="spec-num">LAYER 05</div>
+            <div class="spec-name">Cover Layer</div>
+            <div class="spec-desc">Precision optically clear polycarbonate. Its exact 100μm profile is the key to
+              minimizing spherical aberration for the high-NA blue laser.</div>
+            <div class="spec-metric">Tolerance: &plusmn;2μm uniformity</div>
+          </div>
+          <!-- Recording -->
+          <div class="spec-card" id="spec_record" style="--accent-color: #06d6f5">
+            <div class="spec-num">LAYER 04</div>
+            <div class="spec-name">Recording Layer</div>
+            <div class="spec-desc">Inorganic Phase-Change material (Cu/Si). Heat from the 405nm laser flips material
+              states to encode binary 1s (crystalline) and 0s (amorphous).</div>
+            <div class="spec-metric">Material: Inorganic Alloy</div>
+          </div>
+          <!-- Reflective -->
+          <div class="spec-card" id="spec_reflect" style="--accent-color: #cbd5e1">
+            <div class="spec-num">LAYER 03</div>
+            <div class="spec-name">Reflective Layer</div>
+            <div class="spec-desc">High-reflectivity silver alloy (or gold in archival media). Serves as the return path
+              for the laser pickup to interpret the pit sequence.</div>
+            <div class="spec-metric">Function: Laser beam return</div>
+          </div>
+          <!-- Data -->
+          <div class="spec-card" id="spec_data" style="--accent-color: rgba(30, 41, 59, 1)">
+            <div class="spec-num">LAYER 02</div>
+            <div class="spec-name">Data Layer (L0)</div>
+            <div class="spec-desc">The physical molding of pits and lands. Blu-ray's 0.32μm track pitch is the
+              breakthrough that enables 25GB per standard layer.</div>
+            <div class="spec-metric">Density: 25GB Capacity</div>
+          </div>
+          <!-- Substrate -->
+          <div class="spec-card" id="spec_substrate" style="--accent-color: rgba(255, 255, 255, 0.1)">
+            <div class="spec-num">LAYER 01</div>
+            <div class="spec-name">Polycarbonate Substrate</div>
+            <div class="spec-desc">The 1.1mm foundation providing structural rigidity. Since the laser does not pass
+              through this base, the disc is immune to substrate-induced coma.</div>
+            <div class="spec-metric">Base: 1.1mm Rigid Plastic</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INSIGHTS -->
+      <div class="disc-info">
+        <div class="section-header-box">
+          <div class="disc-info-title"> SYSTEM INSIGHTS & ACTIONS</div>
+        </div>
+        <div class="insight-grid">
+          <div class="insight-card adv-card" onclick="openInsight('blutrack')">
+            <div class="insight-header">
+              <div class="dot-green"></div>BluTrack Reference Data
+            </div>
+            <ul class="insight-list">
+              <li><strong>BER Standards:</strong> 100% = &lt;1×10⁻¹¹ through 50% = &gt;1×10⁻⁴ errors/bit.</li>
+              <li><strong>Scratch Damage:</strong> From 0% (factory) to 38%+ (severe) surface defects.</li>
+              <li><strong>Oxidation Index:</strong> Iridescence loss from 0% (pristine) to 60%+ (disc rot).</li>
+              <li><strong>Jitter Thresholds:</strong> Standards allow &lt;9dB; &gt;12dB indicates failure.</li>
+            </ul>
+          </div>
+          <div class="insight-card adv-card" onclick="openInsight('forensic')">
+            <div class="insight-header">
+              <div class="dot-green"></div>Forensic Advisory
+            </div>
+            <ul class="insight-list">
+              <li><strong>Hard Coating:</strong> Blu-ray's TDK Durabis layer is 50x more scratch-resistant than DVD.
+              </li>
+              <li><strong>Oxidation Risk:</strong> Silver-alloy reflective layers in cheap blanks rot faster than
+                Gold/Silicon.</li>
+              <li><strong>Track Pitch:</strong> 0.32μm pitch requires precise laser alignment; physical warp is fatal.
+              </li>
+            </ul>
+          </div>
+          <div class="insight-card inst-card" onclick="openInsight('longevity')">
+            <div class="insight-header">
+              <div class="dot-cyan"></div>Longevity Protocol
+            </div>
+            <ul class="insight-list">
+              <li><strong>Vertical Storage:</strong> Prevents "disc creep" or substrate warping over decades.</li>
+              <li><strong>Thermal Control:</strong> Every 5°C drop in ambient temp doubles the Arrhenius lifespan.</li>
+              <li><strong>Verification:</strong> Perform a binary diff every 5 years to ensure zero bit-rot.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="ewaste-box" id="ewasteBox" onclick="openEcoAudit()">
+          <span id="ewasteValue">1 Blu-ray disc captures the equivalent data of 36 legacy CDs — significantly reducing
+            physical waste.</span>
+        </div>
+      </div>
+
+      <div class="footer-disclaimer" id="disclaimerBox" onclick="openDisclaimerInsight()" style="cursor:pointer;">
+        <div class="disclaimer-title">Limitations & Academic Disclaimer</div>
+        <div class="disclaimer-text">
+          This simulation is for educational and illustrative purposes only. The AI-driven surface analysis utilizes
+          probabilistic computer vision (statistical discriminators) to estimate structural health and is NOT a
+          certified forensic measurement of optical substrate integrity. Accuracy is subject to image quality, lighting
+          variance, and sensor resolution.
+        </div>
+      </div>
+
+      <!-- TEAM MEMBERS -->
+      <div class="team-section">
+        <div class="team-header-label">
+          <span class="team-dot"></span>
+          DEVELOPED BY
+        </div>
+        <div class="team-grid">
+          <div class="team-card">
+            <div class="team-avatar" style="--avatar-color:#0ea5e9;">R</div>
+            <div class="team-name">Rajappriyan</div>
+          </div>
+          <div class="team-card">
+            <div class="team-avatar" style="--avatar-color:#f59e0b;">R</div>
+            <div class="team-name">Rajaguru</div>
+          </div>
+          <div class="team-card">
+            <div class="team-avatar" style="--avatar-color:#8b5cf6;">R</div>
+            <div class="team-name">Rakkshna</div>
+          </div>
+          <div class="team-card">
+            <div class="team-avatar" style="--avatar-color:#10b981;">R</div>
+            <div class="team-name">Ridhiksha</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 40px; padding-bottom: 20px;">
+        <div class="disclaimer-text">
+          This system provides an estimated simulation based on visual and environmental factors. It does not measure actual disc readability or hardware-level errors.
+        </div>
+      </div>
+
+    </div><!-- /simulationContent -->
+  </div>
+
+  <!-- INSIGHT MODAL STRUCTURE -->
+  <div class="insight-overlay" id="insightOverlay" onclick="closeInsight()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-close" onclick="closeInsight()">&times;</div>
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="ml_dataset_export.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,3 @@
+Width:507, Height:382, Valid:83406, maxRadius:183.35999999999999, minRadius:84.04
+avgScratch:0.09606295710140751, darkRatio:0.0, avgOxidation:0.0011270172409658778
+adjScratch:0, estAge:0, estFreq:0
